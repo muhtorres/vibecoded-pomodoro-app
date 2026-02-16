@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
@@ -8,8 +8,16 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useTimerStore } from '@/stores/useTimerStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { getTodayKey } from '@/utils/formatTime';
+import { DailyStats } from '@/types/timer';
 
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+
+const emptyDay = (date: string): DailyStats => ({
+  date,
+  completedPomodoros: 0,
+  totalFocusMinutes: 0,
+});
 
 export default function StatsScreen() {
   const { colors, getPhaseColor } = useAppTheme();
@@ -17,11 +25,43 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const accentColor = getPhaseColor('work');
 
-  const todayStats = useStatsStore((s) => s.getTodayStats());
-  const weekStats = useStatsStore((s) => s.getWeekStats());
-  const streak = useStatsStore((s) => s.getStreak());
+  const dailyStats = useStatsStore((s) => s.dailyStats);
   const dailyGoal = useSettingsStore((s) => s.dailyGoal);
   const completedToday = useTimerStore((s) => s.completedPomodoros);
+
+  const todayStats = useMemo(() => {
+    const today = getTodayKey();
+    return dailyStats[today] ?? emptyDay(today);
+  }, [dailyStats]);
+
+  const weekStats = useMemo(() => {
+    const stats: DailyStats[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      stats.push(dailyStats[key] ?? emptyDay(key));
+    }
+    return stats;
+  }, [dailyStats]);
+
+  const streak = useMemo(() => {
+    let count = 0;
+    const now = new Date();
+    for (let i = 0; i < 365; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      const day = dailyStats[key];
+      if (day && day.completedPomodoros > 0) {
+        count++;
+      } else if (i > 0) {
+        break;
+      }
+    }
+    return count;
+  }, [dailyStats]);
 
   const todayPomodoros = todayStats.completedPomodoros + completedToday;
   const progress = dailyGoal > 0 ? Math.min(todayPomodoros / dailyGoal, 1) : 0;

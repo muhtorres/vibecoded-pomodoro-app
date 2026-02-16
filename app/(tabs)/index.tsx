@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, AppState, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 
 import { CircularProgress } from '@/components/timer/CircularProgress';
 import { SessionIndicator } from '@/components/timer/SessionIndicator';
@@ -14,15 +14,25 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { Spacing } from '@/constants/theme';
 import { getPhaseLabel } from '@/utils/formatTime';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+let Notifications: typeof NotificationsType | null = null;
+let notificationsAvailable = false;
+try {
+  // Dynamic require to avoid crash in Expo Go (SDK 53+)
+  Notifications = require('expo-notifications') as typeof NotificationsType;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+  notificationsAvailable = true;
+} catch {
+  // expo-notifications not available in Expo Go
+}
 
 export default function TimerScreen() {
   const insets = useSafeAreaInsets();
@@ -52,9 +62,16 @@ export default function TimerScreen() {
     vibrationEnabled,
   } = useSettingsStore();
 
-  if (keepScreenOn && isRunning) {
-    useKeepAwake();
-  }
+  useEffect(() => {
+    if (keepScreenOn && isRunning) {
+      activateKeepAwakeAsync('timer');
+    } else {
+      deactivateKeepAwake('timer');
+    }
+    return () => {
+      deactivateKeepAwake('timer');
+    };
+  }, [keepScreenOn, isRunning]);
 
   useEffect(() => {
     if (isRunning) {
@@ -89,7 +106,7 @@ export default function TimerScreen() {
   }, [syncWithBackground]);
 
   const scheduleNotification = useCallback(async (seconds: number, phaseName: string) => {
-    if (Platform.OS === 'web') return;
+    if (!notificationsAvailable || !Notifications || Platform.OS === 'web') return;
 
     await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -121,7 +138,7 @@ export default function TimerScreen() {
 
   const handlePause = useCallback(async () => {
     pause();
-    if (Platform.OS !== 'web') {
+    if (notificationsAvailable && Notifications && Platform.OS !== 'web') {
       await Notifications.cancelAllScheduledNotificationsAsync();
     }
   }, [pause]);
@@ -133,14 +150,14 @@ export default function TimerScreen() {
 
   const handleReset = useCallback(async () => {
     reset();
-    if (Platform.OS !== 'web') {
+    if (notificationsAvailable && Notifications && Platform.OS !== 'web') {
       await Notifications.cancelAllScheduledNotificationsAsync();
     }
   }, [reset]);
 
   const handleSkip = useCallback(async () => {
     skip();
-    if (Platform.OS !== 'web') {
+    if (notificationsAvailable && Notifications && Platform.OS !== 'web') {
       await Notifications.cancelAllScheduledNotificationsAsync();
     }
   }, [skip]);
