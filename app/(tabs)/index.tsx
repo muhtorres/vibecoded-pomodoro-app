@@ -14,11 +14,11 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { Spacing } from '@/constants/theme';
 import { getPhaseLabel } from '@/utils/formatTime';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 let Notifications: typeof NotificationsType | null = null;
 let notificationsAvailable = false;
 try {
   // Dynamic require to avoid crash in Expo Go (SDK 53+)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   Notifications = require('expo-notifications') as typeof NotificationsType;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
