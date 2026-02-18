@@ -31,7 +31,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const themeOptions: Array<{ label: string; value: 'light' | 'dark' | 'system' }> = [
+  const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
     { label: 'Sistema', value: 'system' },
     { label: 'Claro', value: 'light' },
     { label: 'Escuro', value: 'dark' },

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { formatTime } from '@/utils/formatTime';
-import { FontSize } from '@/constants/theme';
+
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { TimerPhase } from '@/types/timer';
 
@@ -12,8 +12,6 @@ interface CircularProgressProps {
   phase: TimerPhase;
   isRunning: boolean;
 }
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export const CircularProgress = ({
   remainingSeconds,
